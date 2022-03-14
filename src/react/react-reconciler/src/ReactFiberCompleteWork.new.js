@@ -832,6 +832,8 @@ function completeWork(
   workInProgress: Fiber,
   renderLanes: Lanes,
 ): Fiber | null {
+  if (!__DEBUG__.length || __DEBUG__.includes("completeWork")) debugger
+  if (__LOG__) console.log("completeWork start")
   const newProps = workInProgress.pendingProps;
   // Note: This intentionally doesn't check if we're hydrating because comparing
   // to the current tree provider fiber is just as fast and less error-prone.

@@ -82,40 +82,21 @@ const defaultOnRecoverableError =
       };
 
 function ReactDOMRoot(internalRoot: FiberRoot) {
+  if (!__DEBUG__.length || __DEBUG__.includes("ReactDOMRoot")) debugger
+  if (__LOG__) console.log("ReactDOMRoot start")
   this._internalRoot = internalRoot;
 }
 
 ReactDOMHydrationRoot.prototype.render = ReactDOMRoot.prototype.render = function(
   children: ReactNodeList,
 ): void {
+  if (!__DEBUG__.length || __DEBUG__.includes("render")) debugger
+  if (__LOG__) console.log("render start")
   const root = this._internalRoot;
   if (root === null) {
     throw new Error('Cannot update an unmounted root.');
   }
 
-  if (__DEV__) {
-    if (typeof arguments[1] === 'function') {
-      console.error(
-        'render(...): does not support the second callback argument. ' +
-          'To execute a side effect after rendering, declare it in a component body with useEffect().',
-      );
-    }
-    const container = root.containerInfo;
-
-    if (container.nodeType !== COMMENT_NODE) {
-      const hostInstance = findHostInstanceWithNoPortals(root.current);
-      if (hostInstance) {
-        if (hostInstance.parentNode !== container) {
-          console.error(
-            'render(...): It looks like the React-rendered content of the ' +
-              'root container was removed without using React. This is not ' +
-              'supported and will cause errors. Instead, call ' +
-              "root.unmount() to empty a root's container.",
-          );
-        }
-      }
-    }
-  }
   updateContainer(children, root, null, null);
 };
 
@@ -151,7 +132,11 @@ ReactDOMHydrationRoot.prototype.unmount = ReactDOMRoot.prototype.unmount = funct
 export function createRoot(
   container: Container,
   options?: CreateRootOptions,
-): RootType {
+  ): RootType {
+  if (!__DEBUG__.length || __DEBUG__.includes("createRoot")) debugger
+  if (__LOG__) console.log("createRoot start")
+  
+  // 判断是否是一个和合法的dom元素
   if (!isValidContainerLegacy(container)) {
     throw new Error('createRoot(...): Target container is not a DOM element.');
   }
@@ -164,6 +149,7 @@ export function createRoot(
   let onRecoverableError = defaultOnRecoverableError;
   let transitionCallbacks = null;
 
+  // createRoot的第二个参数，通常不设置
   if (options !== null && options !== undefined) {
     if (__DEV__) {
       if ((options: any).hydrate) {
@@ -205,6 +191,8 @@ export function createRoot(
   );
   markContainerAsRoot(root.current, container);
 
+  // 判断根节点是不是一个comment节点，如果是的话找他的父节点当做根节点元素，元素的nodeType详情可见如下
+  // https://developer.mozilla.org/zh-CN/docs/Web/API/Node/nodeType
   const rootContainerElement =
     container.nodeType === COMMENT_NODE ? container.parentNode : container;
   listenToAllSupportedEvents(rootContainerElement);

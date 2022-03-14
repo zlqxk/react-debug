@@ -208,6 +208,8 @@ const ReactElement = function(type, key, ref, self, source, owner, props) {
  * @param {string} key
  */
 export function jsx(type, config, maybeKey) {
+  if (!__DEBUG__.length || __DEBUG__.includes("jsx")) debugger
+  if (__LOG__) console.log("jsx start")
   let propName;
 
   // Reserved names are extracted

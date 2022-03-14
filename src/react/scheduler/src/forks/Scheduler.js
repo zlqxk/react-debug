@@ -145,6 +145,8 @@ function handleTimeout(currentTime) {
 }
 
 function flushWork(hasTimeRemaining, initialTime) {
+  if (!__DEBUG__.length || __DEBUG__.includes("flushWork")) debugger
+  if (__LOG__) console.log("flushWork start")
   if (enableProfiling) {
     markSchedulerUnsuspended(initialTime);
   }
@@ -187,6 +189,8 @@ function flushWork(hasTimeRemaining, initialTime) {
 }
 
 function workLoop(hasTimeRemaining, initialTime) {
+  if (!__DEBUG__.length || __DEBUG__.includes("workLoop")) debugger
+  if (__LOG__) console.log("workLoop start")
   let currentTime = initialTime;
   advanceTimers(currentTime);
   currentTask = peek(taskQueue);
@@ -306,6 +310,8 @@ function unstable_wrapCallback(callback) {
 }
 
 function unstable_scheduleCallback(priorityLevel, callback, options) {
+  if (!__DEBUG__.length || __DEBUG__.includes("unstable_scheduleCallback")) debugger
+  if (__LOG__) console.log("unstable_scheduleCallback start")
   var currentTime = getCurrentTime();
 
   var startTime;
@@ -438,6 +444,8 @@ let startTime = -1;
 let needsPaint = false;
 
 function shouldYieldToHost() {
+  if (!__DEBUG__.length || __DEBUG__.includes("shouldYieldToHost")) debugger
+  if (__LOG__) console.log("shouldYieldToHost start")
   const timeElapsed = getCurrentTime() - startTime;
   if (timeElapsed < frameInterval) {
     // The main thread has only been blocked for a really short amount of time;
@@ -513,6 +521,8 @@ function forceFrameRate(fps) {
 }
 
 const performWorkUntilDeadline = () => {
+  if (!__DEBUG__.length || __DEBUG__.includes("performWorkUntilDeadline")) debugger
+  if (__LOG__) console.log("performWorkUntilDeadline start")
   if (scheduledHostCallback !== null) {
     const currentTime = getCurrentTime();
     // Keep track of the start time so we can measure how long the main thread
@@ -580,6 +590,8 @@ if (typeof localSetImmediate === 'function') {
 }
 
 function requestHostCallback(callback) {
+  if (!__DEBUG__.length || __DEBUG__.includes("requestHostCallback")) debugger
+  if (__LOG__) console.log("requestHostCallback start")
   scheduledHostCallback = callback;
   if (!isMessageLoopRunning) {
     isMessageLoopRunning = true;

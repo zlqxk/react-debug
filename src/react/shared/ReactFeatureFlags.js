@@ -39,7 +39,8 @@ export const replayFailedUnitOfWorkWithInvokeGuardedCallback = __DEV__;
 export const warnAboutDeprecatedLifecycles = true;
 
 // Gather advanced timing metrics for Profiler subtrees.
-export const enableProfilerTimer = __PROFILE__;
+export const enableProfilerTimer = false;
+// export const enableProfilerTimer = __PROFILE__;
 
 // Record durations for commit and passive effects phases.
 export const enableProfilerCommitHooks = __PROFILE__;
@@ -60,7 +61,7 @@ export const enableSelectiveHydration = true;
 
 // Flight experiments
 export const enableLazyElements = true;
-export const enableCache = __EXPERIMENTAL__;
+export const enableCache = false;
 
 // Only used in www builds.
 export const enableSchedulerDebugging = false;
@@ -110,7 +111,7 @@ export const enableClientRenderFallbackOnHydrationMismatch = true;
 
 export const enableComponentStackLocations = true;
 
-export const enableNewReconciler = false;
+export const enableNewReconciler = true;
 
 export const disableNativeComponentFrames = false;
 
@@ -179,13 +180,13 @@ export const deferRenderPhaseUpdateToNextBatch = false;
 
 export const enableUseRefAccessWarning = false;
 
-export const disableSchedulerTimeoutInWorkLoop = false;
+export const disableSchedulerTimeoutInWorkLoop = true;
 
 export const enableLazyContextPropagation = false;
 
-export const enableSyncDefaultUpdates = true;
+export const enableSyncDefaultUpdates = false;
 
-export const allowConcurrentByDefault = false;
+export const allowConcurrentByDefault = true;
 
 export const enablePersistentOffscreenHostContainer = false;
 

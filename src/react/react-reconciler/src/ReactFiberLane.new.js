@@ -183,6 +183,8 @@ function getHighestPriorityLanes(lanes: Lanes | Lane): Lanes {
 }
 
 export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
+  if (!__DEBUG__.length || __DEBUG__.includes("getNextLanes")) debugger
+  if (__LOG__) console.log("getNextLanes start")
   // Early bailout if there's no pending work left.
   const pendingLanes = root.pendingLanes;
   if (pendingLanes === NoLanes) {
@@ -384,10 +386,17 @@ function computeExpirationTime(lane: Lane, currentTime: number) {
   }
 }
 
+/**
+ * 记录任务的过期时间，如果已经过期，则将该任务放到root节点的expiredLanes中
+ * @param {*} root 
+ * @param {*} currentTime 
+ */
 export function markStarvedLanesAsExpired(
   root: FiberRoot,
   currentTime: number,
 ): void {
+  if (!__DEBUG__.length || __DEBUG__.includes("markStarvedLanesAsExpired")) debugger
+  if (__LOG__) console.log("markStarvedLanesAsExpired start")
   // TODO: This gets called every time we yield. We can optimize by storing
   // the earliest expiration time on the root. Then use that to quickly bail out
   // of this function.
@@ -566,6 +575,8 @@ export function markRootUpdated(
   updateLane: Lane,
   eventTime: number,
 ) {
+  if (!__DEBUG__.length || __DEBUG__.includes("markRootUpdated")) debugger
+  if (__LOG__) console.log("markRootUpdated start")
   root.pendingLanes |= updateLane;
 
   // If there are any suspended transitions, it's possible this new update

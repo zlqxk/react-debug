@@ -59,7 +59,14 @@ export function precacheFiberNode(
   (node: any)[internalInstanceKey] = hostInst;
 }
 
+/**
+ * 标记root节点
+ * @param {*} hostRoot 
+ * @param {*} node 
+ */
 export function markContainerAsRoot(hostRoot: Fiber, node: Container): void {
+  if (!__DEBUG__.length || __DEBUG__.includes("markContainerAsRoot")) debugger
+  if (__LOG__) console.log("markContainerAsRoot start")
   node[internalContainerInstanceKey] = hostRoot;
 }
 

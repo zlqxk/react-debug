@@ -127,6 +127,8 @@ export function createFiberRoot(
   onRecoverableError: null | ((error: mixed) => void),
   transitionCallbacks: null | TransitionTracingCallbacks,
 ): FiberRoot {
+  if (!__DEBUG__.length || __DEBUG__.includes("createFiberRoot")) debugger
+  if (__LOG__) console.log("createFiberRoot start")
   const root: FiberRoot = (new FiberRootNode(
     containerInfo,
     tag,
@@ -144,11 +146,13 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
+  // 创建root的fiber节点
   const uninitializedFiber = createHostRootFiber(
     tag,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
   );
+  // fiberRoot的current指向rootFiber，rootFiber的stateNode指向fiberRoot
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
 
@@ -169,11 +173,13 @@ export function createFiberRoot(
       element: null,
       cache: initialCache,
     };
+    // 初始化memoizedState
     uninitializedFiber.memoizedState = initialState;
   } else {
     const initialState = {
       element: null,
     };
+    // 初始化memoizedState
     uninitializedFiber.memoizedState = initialState;
   }
 

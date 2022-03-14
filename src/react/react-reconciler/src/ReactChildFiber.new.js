@@ -1146,6 +1146,8 @@ function ChildReconciler(shouldTrackSideEffects) {
     element: ReactElement,
     lanes: Lanes,
   ): Fiber {
+    if (!__DEBUG__.length || __DEBUG__.includes("reconcileSingleElement")) debugger
+    if (__LOG__) console.log("reconcileSingleElement start")
     const key = element.key;
     let child = currentFirstChild;
     while (child !== null) {
@@ -1263,6 +1265,8 @@ function ChildReconciler(shouldTrackSideEffects) {
     newChild: any,
     lanes: Lanes,
   ): Fiber | null {
+    if (!__DEBUG__.length || __DEBUG__.includes("reconcileChildFibers")) debugger
+    if (__LOG__) console.log("reconcileChildFibers start")
     // This function is not recursive.
     // If the top level item is an array, we treat it as a set of children,
     // not as a fragment. Nested arrays on the other hand will be treated as

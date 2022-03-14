@@ -348,7 +348,7 @@ let nestedPassiveUpdateCount: number = 0;
 
 // If two updates are scheduled within the same event, we should treat their
 // event times as simultaneous, even if the actual clock time has advanced
-// between the first and second call.
+// between the first and second call.  如果在同一个事件中安排了两个更新，我们应该将它们的事件时间视为同时发生，即使实际时钟时间在第一次和第二次调用之间已经提前。
 let currentEventTime: number = NoTimestamp;
 let currentEventTransitionLane: Lanes = NoLanes;
 
@@ -461,13 +461,15 @@ export function scheduleUpdateOnFiber(
   eventTime: number,
 ): FiberRoot | null {
   checkForNestedUpdates();
-
+  if (!__DEBUG__.length || __DEBUG__.includes("scheduleUpdateOnFiber")) debugger
+  if (__LOG__) console.log("scheduleUpdateOnFiber start")
   const root = markUpdateLaneFromFiberToRoot(fiber, lane);
   if (root === null) {
     return null;
   }
 
   // Mark that the root has a pending update.
+  // 标记根有一个挂起的更新
   markRootUpdated(root, lane, eventTime);
 
   if (
@@ -568,24 +570,25 @@ export function scheduleUpdateOnFiber(
 // work without treating it as a typical update that originates from an event;
 // e.g. retrying a Suspense boundary isn't an update, but it does schedule work
 // on a fiber.
+/**
+ * 从触发更新的fiber节点开始，一直向上遍历到根节点结束，将子节点的lane合并到父节点的childLanes上
+ * @param {*} sourceFiber 
+ * @param {*} lane 
+ * @returns 
+ */
 function markUpdateLaneFromFiberToRoot(
   sourceFiber: Fiber,
   lane: Lane,
 ): FiberRoot | null {
+  if (!__DEBUG__.length || __DEBUG__.includes("markUpdateLaneFromFiberToRoot")) debugger
+  if (__LOG__) console.log("markUpdateLaneFromFiberToRoot start")
   // Update the source fiber's lanes
   sourceFiber.lanes = mergeLanes(sourceFiber.lanes, lane);
   let alternate = sourceFiber.alternate;
   if (alternate !== null) {
     alternate.lanes = mergeLanes(alternate.lanes, lane);
   }
-  if (__DEV__) {
-    if (
-      alternate === null &&
-      (sourceFiber.flags & (Placement | Hydrating)) !== NoFlags
-    ) {
-      warnAboutUpdateOnNotYetMountedFiberInDEV(sourceFiber);
-    }
-  }
+
   // Walk the parent path to the root and update the child lanes.
   let node = sourceFiber;
   let parent = sourceFiber.return;
@@ -634,6 +637,10 @@ export function isInterleavedUpdate(fiber: Fiber, lane: Lane) {
 // root has work on. This function is called on every update, and right before
 // exiting a task.
 function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
+  if (!__DEBUG__.length || __DEBUG__.includes("ensureRootIsScheduled")) debugger
+  if (__LOG__) console.log("ensureRootIsScheduled start")
+
+  // 获取旧任务
   const existingCallbackNode = root.callbackNode;
 
   // Check if any lanes are being starved by other work. If so, mark them as
@@ -734,6 +741,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
     newCallbackNode = null;
   } else {
     let schedulerPriorityLevel;
+    // 将react优先级映射为schedule优先级
     switch (lanesToEventPriority(nextLanes)) {
       case DiscreteEventPriority:
         schedulerPriorityLevel = ImmediateSchedulerPriority;
@@ -751,6 +759,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
         schedulerPriorityLevel = NormalSchedulerPriority;
         break;
     }
+    // 进入schedule，开始调度
     newCallbackNode = scheduleCallback(
       schedulerPriorityLevel,
       performConcurrentWorkOnRoot.bind(null, root),
@@ -764,6 +773,8 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
 // This is the entry point for every concurrent task, i.e. anything that
 // goes through Scheduler.
 function performConcurrentWorkOnRoot(root, didTimeout) {
+  if (!__DEBUG__.length || __DEBUG__.includes("performConcurrentWorkOnRoot")) debugger
+  if (__LOG__) console.log("performConcurrentWorkOnRoot start")
   if (enableProfilerTimer && enableProfilerNestedUpdatePhase) {
     resetNestedUpdateFlag();
   }
@@ -777,6 +788,7 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
     throw new Error('Should not already be working.');
   }
 
+  // 在下一次渲染前先把保证上一次的useEffect的回调执行完成
   // Flush any pending passive effects before deciding which lanes to work on,
   // in case they schedule additional work.
   const originalCallbackNode = root.callbackNode;
@@ -1339,6 +1351,8 @@ export function popRenderLanes(fiber: Fiber) {
 }
 
 function prepareFreshStack(root: FiberRoot, lanes: Lanes) {
+  if (!__DEBUG__.length || __DEBUG__.includes("prepareFreshStack")) debugger
+  if (__LOG__) console.log("prepareFreshStack start")
   root.finishedWork = null;
   root.finishedLanes = NoLanes;
 
@@ -1627,6 +1641,8 @@ function workLoopSync() {
 }
 
 function renderRootConcurrent(root: FiberRoot, lanes: Lanes) {
+  if (!__DEBUG__.length || __DEBUG__.includes("renderRootConcurrent")) debugger
+  if (__LOG__) console.log("renderRootConcurrent start")
   const prevExecutionContext = executionContext;
   executionContext |= RenderContext;
   const prevDispatcher = pushDispatcher();
@@ -1707,6 +1723,8 @@ function renderRootConcurrent(root: FiberRoot, lanes: Lanes) {
 
 /** @noinline */
 function workLoopConcurrent() {
+  if (!__DEBUG__.length || __DEBUG__.includes("workLoopConcurrent")) debugger
+  if (__LOG__) console.log("workLoopConcurrent start")
   // Perform work until Scheduler asks us to yield
   while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress);
@@ -1714,6 +1732,8 @@ function workLoopConcurrent() {
 }
 
 function performUnitOfWork(unitOfWork: Fiber): void {
+  if (!__DEBUG__.length || __DEBUG__.includes("performUnitOfWork")) debugger
+  if (__LOG__) console.log("performUnitOfWork start")
   // The current, flushed, state of this fiber is the alternate. Ideally
   // nothing should rely on this, but relying on it here means that we don't
   // need an additional field on the work in progress.
@@ -1742,6 +1762,8 @@ function performUnitOfWork(unitOfWork: Fiber): void {
 }
 
 function completeUnitOfWork(unitOfWork: Fiber): void {
+  if (!__DEBUG__.length || __DEBUG__.includes("completeUnitOfWork")) debugger
+  if (__LOG__) console.log("completeUnitOfWork start")
   // Attempt to complete the current unit of work, then move to the next
   // sibling. If there are no more siblings, return to the parent fiber.
   let completedWork = unitOfWork;
@@ -2586,6 +2608,9 @@ function jnd(timeElapsed: number) {
     : ceil(timeElapsed / 1960) * 1960;
 }
 
+/**
+ * 检查是否有无限更新
+ */
 function checkForNestedUpdates() {
   if (nestedUpdateCount > NESTED_UPDATE_LIMIT) {
     nestedUpdateCount = 0;
@@ -2886,6 +2911,8 @@ export function restorePendingUpdaters(root: FiberRoot, lanes: Lanes): void {
 
 const fakeActCallbackNode = {};
 function scheduleCallback(priorityLevel, callback) {
+  if (!__DEBUG__.length || __DEBUG__.includes("scheduleCallback")) debugger
+  if (__LOG__) console.log("scheduleCallback start")
   if (__DEV__) {
     // If we're currently inside an `act` scope, bypass Scheduler and push to
     // the `act` queue instead.

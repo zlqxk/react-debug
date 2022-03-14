@@ -282,6 +282,8 @@ export function reconcileChildren(
   nextChildren: any,
   renderLanes: Lanes,
 ) {
+  if (!__DEBUG__.length || __DEBUG__.includes("reconcileChildren")) debugger
+  if (__LOG__) console.log("reconcileChildren start")
   if (current === null) {
     // If this is a fresh new component that hasn't been rendered yet, we
     // won't update its child set by applying minimal side-effects. Instead,
@@ -1307,6 +1309,8 @@ function pushHostRootContext(workInProgress) {
 }
 
 function updateHostRoot(current, workInProgress, renderLanes) {
+  if (!__DEBUG__.length || __DEBUG__.includes("updateHostRoot")) debugger
+  if (__LOG__) console.log("updateHostRoot start")
   pushHostRootContext(workInProgress);
   const updateQueue = workInProgress.updateQueue;
 
@@ -3441,6 +3445,8 @@ function checkScheduledUpdateOrContext(
   current: Fiber,
   renderLanes: Lanes,
 ): boolean {
+  if (!__DEBUG__.length || __DEBUG__.includes("checkScheduledUpdateOrContext")) debugger
+  if (__LOG__) console.log("checkScheduledUpdateOrContext start")
   // Before performing an early bailout, we must check if there are pending
   // updates or context.
   const updateLanes = current.lanes;
@@ -3672,23 +3678,25 @@ function beginWork(
   workInProgress: Fiber,
   renderLanes: Lanes,
 ): Fiber | null {
-  if (__DEV__) {
-    if (workInProgress._debugNeedsRemount && current !== null) {
-      // This will restart the begin phase with a new fiber.
-      return remountFiber(
-        current,
-        workInProgress,
-        createFiberFromTypeAndProps(
-          workInProgress.type,
-          workInProgress.key,
-          workInProgress.pendingProps,
-          workInProgress._debugOwner || null,
-          workInProgress.mode,
-          workInProgress.lanes,
-        ),
-      );
-    }
-  }
+  if (!__DEBUG__.length || __DEBUG__.includes("beginWork")) debugger
+  if (__LOG__) console.log("beginWork start")
+  // if (__DEV__) {
+  //   if (workInProgress._debugNeedsRemount && current !== null) {
+  //     // This will restart the begin phase with a new fiber.
+  //     return remountFiber(
+  //       current,
+  //       workInProgress,
+  //       createFiberFromTypeAndProps(
+  //         workInProgress.type,
+  //         workInProgress.key,
+  //         workInProgress.pendingProps,
+  //         workInProgress._debugOwner || null,
+  //         workInProgress.mode,
+  //         workInProgress.lanes,
+  //       ),
+  //     );
+  //   }
+  // }
 
   if (current !== null) {
     const oldProps = current.memoizedProps;

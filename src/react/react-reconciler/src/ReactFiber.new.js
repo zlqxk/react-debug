@@ -212,6 +212,8 @@ const createFiber = function(
   key: null | string,
   mode: TypeOfMode,
 ): Fiber {
+  if (!__DEBUG__.length || __DEBUG__.includes("createFiber")) debugger
+  if (__LOG__) console.log("createFiber start")
   // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
   return new FiberNode(tag, pendingProps, key, mode);
 };
@@ -246,6 +248,8 @@ export function resolveLazyComponentTag(Component: Function): WorkTag {
 
 // This is used to create an alternate fiber to do work on.
 export function createWorkInProgress(current: Fiber, pendingProps: any): Fiber {
+  if (!__DEBUG__.length || __DEBUG__.includes("createWorkInProgress")) debugger
+  if (__LOG__) console.log("createWorkInProgress start")
   let workInProgress = current.alternate;
   if (workInProgress === null) {
     // We use a double buffering pooling technique because we know that we'll
@@ -424,11 +428,20 @@ export function resetWorkInProgress(workInProgress: Fiber, renderLanes: Lanes) {
   return workInProgress;
 }
 
+/**
+ * 创建rootFiber
+ * @param {*} tag 
+ * @param {*} isStrictMode 
+ * @param {*} concurrentUpdatesByDefaultOverride 
+ * @returns 
+ */
 export function createHostRootFiber(
   tag: RootTag,
   isStrictMode: boolean,
   concurrentUpdatesByDefaultOverride: null | boolean,
 ): Fiber {
+  if (!__DEBUG__.length || __DEBUG__.includes("createHostRootFiber")) debugger
+  if (__LOG__) console.log("createHostRootFiber start")
   let mode;
   if (tag === ConcurrentRoot) {
     mode = ConcurrentMode;
@@ -618,6 +631,8 @@ export function createFiberFromElement(
   mode: TypeOfMode,
   lanes: Lanes,
 ): Fiber {
+  if (!__DEBUG__.length || __DEBUG__.includes("createFiberFromElement")) debugger
+  if (__LOG__) console.log("createFiberFromElement start")
   let owner = null;
   if (__DEV__) {
     owner = element._owner;
