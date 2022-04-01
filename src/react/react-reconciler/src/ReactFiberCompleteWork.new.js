@@ -8,6 +8,7 @@
  */
 
 import type {Fiber} from './ReactInternalTypes';
+import type {RootState} from './ReactFiberRoot.new';
 import type {Lanes, Lane} from './ReactFiberLane.new';
 import type {
   ReactScopeInstance,
@@ -28,10 +29,11 @@ import type {
 } from './ReactFiberSuspenseComponent.new';
 import type {SuspenseContext} from './ReactFiberSuspenseContext.new';
 import type {OffscreenState} from './ReactFiberOffscreenComponent';
-import type {Cache, SpawnedCachePool} from './ReactFiberCacheComponent.new';
+import type {Cache} from './ReactFiberCacheComponent.new';
 import {
   enableClientRenderFallbackOnHydrationMismatch,
   enableSuspenseAvoidThisFallback,
+  enableLegacyHidden,
 } from 'shared/ReactFeatureFlags';
 
 import {resetWorkInProgressVersions as resetMutableSourceWorkInProgressVersions} from './ReactMutableSource.new';
@@ -62,6 +64,7 @@ import {
   OffscreenComponent,
   LegacyHiddenComponent,
   CacheComponent,
+  TracingMarkerComponent,
 } from './ReactWorkTags';
 import {NoMode, ConcurrentMode, ProfileMode} from './ReactTypeOfMode';
 import {
@@ -141,6 +144,7 @@ import {
   enableCache,
   enableSuspenseLayoutEffectSemantics,
   enablePersistentOffscreenHostContainer,
+  enableTransitionTracing,
 } from 'shared/ReactFeatureFlags';
 import {
   renderDidSuspend,
@@ -160,12 +164,9 @@ import {
 import {resetChildFibers} from './ReactChildFiber.new';
 import {createScopeInstance} from './ReactFiberScope.new';
 import {transferActualDuration} from './ReactProfilerTimer.new';
-import {
-  popCacheProvider,
-  popRootCachePool,
-  popCachePool,
-} from './ReactFiberCacheComponent.new';
+import {popCacheProvider} from './ReactFiberCacheComponent.new';
 import {popTreeContext} from './ReactFiberTreeContext.new';
+import {popRootTransition, popTransition} from './ReactFiberTransition.new';
 
 function markUpdate(workInProgress: Fiber) {
   // Tag the fiber with an update effect. This turns a Placement into
@@ -832,8 +833,6 @@ function completeWork(
   workInProgress: Fiber,
   renderLanes: Lanes,
 ): Fiber | null {
-  if (!__DEBUG__.length || __DEBUG__.includes("completeWork")) debugger
-  if (__LOG__) console.log("completeWork start")
   const newProps = workInProgress.pendingProps;
   // Note: This intentionally doesn't check if we're hydrating because comparing
   // to the current tree provider fiber is just as fast and less error-prone.
@@ -864,11 +863,11 @@ function completeWork(
     case HostRoot: {
       const fiberRoot = (workInProgress.stateNode: FiberRoot);
       if (enableCache) {
-        popRootCachePool(fiberRoot, renderLanes);
+        popRootTransition(fiberRoot, renderLanes);
 
         let previousCache: Cache | null = null;
-        if (workInProgress.alternate !== null) {
-          previousCache = workInProgress.alternate.memoizedState.cache;
+        if (current !== null) {
+          previousCache = current.memoizedState.cache;
         }
         const cache: Cache = workInProgress.memoizedState.cache;
         if (cache !== previousCache) {
@@ -892,12 +891,29 @@ function completeWork(
           // If we hydrated, then we'll need to schedule an update for
           // the commit side-effects on the root.
           markUpdate(workInProgress);
-        } else if (!fiberRoot.isDehydrated) {
-          // Schedule an effect to clear this container at the start of the next commit.
-          // This handles the case of React rendering into a container with previous children.
-          // It's also safe to do for updates too, because current.child would only be null
-          // if the previous render was null (so the container would already be empty).
-          workInProgress.flags |= Snapshot;
+        } else {
+          if (current !== null) {
+            const prevState: RootState = current.memoizedState;
+            if (
+              // Check if this is a client root
+              !prevState.isDehydrated ||
+              // Check if we reverted to client rendering (e.g. due to an error)
+              (workInProgress.flags & ForceClientRender) !== NoFlags
+            ) {
+              // Schedule an effect to clear this container at the start of the
+              // next commit. This handles the case of React rendering into a
+              // container with previous children. It's also safe to do for
+              // updates too, because current.child would only be null if the
+              // previous render was null (so the container would already
+              // be empty).
+              workInProgress.flags |= Snapshot;
+
+              // If this was a forced client render, there may have been
+              // recoverable errors during first hydration attempt. If so, add
+              // them to a queue so we can log them in the commit phase.
+              upgradeHydrationErrorsToRecoverable();
+            }
+          }
         }
       }
       updateHostContainer(current, workInProgress);
@@ -1502,9 +1518,8 @@ function completeWork(
         const prevIsHidden = prevState !== null;
         if (
           prevIsHidden !== nextIsHidden &&
-          newProps.mode !== 'unstable-defer-without-hiding' &&
           // LegacyHidden doesn't do any hiding — it only pre-renders.
-          workInProgress.tag !== LegacyHiddenComponent
+          (!enableLegacyHidden || workInProgress.tag !== LegacyHiddenComponent)
         ) {
           workInProgress.flags |= Visibility;
         }
@@ -1522,9 +1537,9 @@ function completeWork(
             // If so, we need to hide those nodes in the commit phase, so
             // schedule a visibility effect.
             if (
-              workInProgress.tag !== LegacyHiddenComponent &&
-              workInProgress.subtreeFlags & (Placement | Update) &&
-              newProps.mode !== 'unstable-defer-without-hiding'
+              (!enableLegacyHidden ||
+                workInProgress.tag !== LegacyHiddenComponent) &&
+              workInProgress.subtreeFlags & (Placement | Update)
             ) {
               workInProgress.flags |= Visibility;
             }
@@ -1535,11 +1550,11 @@ function completeWork(
       if (enableCache) {
         let previousCache: Cache | null = null;
         if (
-          workInProgress.alternate !== null &&
-          workInProgress.alternate.memoizedState !== null &&
-          workInProgress.alternate.memoizedState.cachePool !== null
+          current !== null &&
+          current.memoizedState !== null &&
+          current.memoizedState.cachePool !== null
         ) {
-          previousCache = workInProgress.alternate.memoizedState.cachePool.pool;
+          previousCache = current.memoizedState.cachePool.pool;
         }
         let cache: Cache | null = null;
         if (
@@ -1552,9 +1567,8 @@ function completeWork(
           // Run passive effects to retain/release the cache.
           workInProgress.flags |= Passive;
         }
-        const spawnedCachePool: SpawnedCachePool | null = (workInProgress.updateQueue: any);
-        if (spawnedCachePool !== null) {
-          popCachePool(workInProgress);
+        if (current !== null) {
+          popTransition(workInProgress);
         }
       }
 
@@ -1563,8 +1577,8 @@ function completeWork(
     case CacheComponent: {
       if (enableCache) {
         let previousCache: Cache | null = null;
-        if (workInProgress.alternate !== null) {
-          previousCache = workInProgress.alternate.memoizedState.cache;
+        if (current !== null) {
+          previousCache = current.memoizedState.cache;
         }
         const cache: Cache = workInProgress.memoizedState.cache;
         if (cache !== previousCache) {
@@ -1573,8 +1587,15 @@ function completeWork(
         }
         popCacheProvider(workInProgress, cache);
         bubbleProperties(workInProgress);
-        return null;
       }
+      return null;
+    }
+    case TracingMarkerComponent: {
+      if (enableTransitionTracing) {
+        // Bubble subtree flags before so we can set the flag property
+        bubbleProperties(workInProgress);
+      }
+      return null;
     }
   }
 

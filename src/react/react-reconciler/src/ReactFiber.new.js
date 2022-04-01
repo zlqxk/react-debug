@@ -15,7 +15,10 @@ import type {WorkTag} from './ReactWorkTags';
 import type {TypeOfMode} from './ReactTypeOfMode';
 import type {Lanes} from './ReactFiberLane.new';
 import type {SuspenseInstance, Props} from './ReactFiberHostConfig';
-import type {OffscreenProps} from './ReactFiberOffscreenComponent';
+import type {
+  OffscreenProps,
+  OffscreenInstance,
+} from './ReactFiberOffscreenComponent';
 
 import {
   createRootStrictEffectsByDefault,
@@ -23,9 +26,11 @@ import {
   enableStrictEffects,
   enableProfilerTimer,
   enableScopeAPI,
+  enableLegacyHidden,
   enableSyncDefaultUpdates,
   allowConcurrentByDefault,
   enableTransitionTracing,
+  enableDebugTracing,
 } from 'shared/ReactFeatureFlags';
 import {
   supportsPersistence,
@@ -212,8 +217,6 @@ const createFiber = function(
   key: null | string,
   mode: TypeOfMode,
 ): Fiber {
-  if (!__DEBUG__.length || __DEBUG__.includes("createFiber")) debugger
-  if (__LOG__) console.log("createFiber start")
   // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
   return new FiberNode(tag, pendingProps, key, mode);
 };
@@ -248,8 +251,6 @@ export function resolveLazyComponentTag(Component: Function): WorkTag {
 
 // This is used to create an alternate fiber to do work on.
 export function createWorkInProgress(current: Fiber, pendingProps: any): Fiber {
-  if (!__DEBUG__.length || __DEBUG__.includes("createWorkInProgress")) debugger
-  if (__LOG__) console.log("createWorkInProgress start")
   let workInProgress = current.alternate;
   if (workInProgress === null) {
     // We use a double buffering pooling technique because we know that we'll
@@ -428,20 +429,11 @@ export function resetWorkInProgress(workInProgress: Fiber, renderLanes: Lanes) {
   return workInProgress;
 }
 
-/**
- * 创建rootFiber
- * @param {*} tag 
- * @param {*} isStrictMode 
- * @param {*} concurrentUpdatesByDefaultOverride 
- * @returns 
- */
 export function createHostRootFiber(
   tag: RootTag,
   isStrictMode: boolean,
   concurrentUpdatesByDefaultOverride: null | boolean,
 ): Fiber {
-  if (!__DEBUG__.length || __DEBUG__.includes("createHostRootFiber")) debugger
-  if (__LOG__) console.log("createHostRootFiber start")
   let mode;
   if (tag === ConcurrentRoot) {
     mode = ConcurrentMode;
@@ -505,10 +497,6 @@ export function createFiberFromTypeAndProps(
     getTag: switch (type) {
       case REACT_FRAGMENT_TYPE:
         return createFiberFromFragment(pendingProps.children, mode, lanes, key);
-      case REACT_DEBUG_TRACING_MODE_TYPE:
-        fiberTag = Mode;
-        mode |= DebugTracingMode;
-        break;
       case REACT_STRICT_MODE_TYPE:
         fiberTag = Mode;
         mode |= StrictLegacyMode;
@@ -526,7 +514,10 @@ export function createFiberFromTypeAndProps(
       case REACT_OFFSCREEN_TYPE:
         return createFiberFromOffscreen(pendingProps, mode, lanes, key);
       case REACT_LEGACY_HIDDEN_TYPE:
-        return createFiberFromLegacyHidden(pendingProps, mode, lanes, key);
+        if (enableLegacyHidden) {
+          return createFiberFromLegacyHidden(pendingProps, mode, lanes, key);
+        }
+      // eslint-disable-next-line no-fallthrough
       case REACT_SCOPE_TYPE:
         if (enableScopeAPI) {
           return createFiberFromScope(type, pendingProps, mode, lanes, key);
@@ -540,6 +531,13 @@ export function createFiberFromTypeAndProps(
       case REACT_TRACING_MARKER_TYPE:
         if (enableTransitionTracing) {
           return createFiberFromTracingMarker(pendingProps, mode, lanes, key);
+        }
+      // eslint-disable-next-line no-fallthrough
+      case REACT_DEBUG_TRACING_MODE_TYPE:
+        if (enableDebugTracing) {
+          fiberTag = Mode;
+          mode |= DebugTracingMode;
+          break;
         }
       // eslint-disable-next-line no-fallthrough
       default: {
@@ -631,8 +629,6 @@ export function createFiberFromElement(
   mode: TypeOfMode,
   lanes: Lanes,
 ): Fiber {
-  if (!__DEBUG__.length || __DEBUG__.includes("createFiberFromElement")) debugger
-  if (__LOG__) console.log("createFiberFromElement start")
   let owner = null;
   if (__DEV__) {
     owner = element._owner;
@@ -742,6 +738,8 @@ export function createFiberFromOffscreen(
   const fiber = createFiber(OffscreenComponent, pendingProps, key, mode);
   fiber.elementType = REACT_OFFSCREEN_TYPE;
   fiber.lanes = lanes;
+  const primaryChildInstance: OffscreenInstance = {};
+  fiber.stateNode = primaryChildInstance;
   return fiber;
 }
 

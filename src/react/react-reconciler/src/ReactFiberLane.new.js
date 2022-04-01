@@ -8,6 +8,10 @@
  */
 
 import type {FiberRoot} from './ReactInternalTypes';
+import type {
+  Transition,
+  Transitions,
+} from './ReactFiberTracingMarkerComponent.new';
 
 // TODO: Ideally these types would be opaque but that doesn't work well with
 // our reconciler fork infra, since these leak into non-reconciler packages.
@@ -20,6 +24,7 @@ import {
   enableSchedulingProfiler,
   enableUpdaterTracking,
   allowConcurrentByDefault,
+  enableTransitionTracing,
 } from 'shared/ReactFeatureFlags';
 import {isDevToolsPresent} from './ReactFiberDevToolsHook.new';
 import {ConcurrentUpdatesByDefaultMode, NoMode} from './ReactTypeOfMode';
@@ -183,8 +188,6 @@ function getHighestPriorityLanes(lanes: Lanes | Lane): Lanes {
 }
 
 export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
-  if (!__DEBUG__.length || __DEBUG__.includes("getNextLanes")) debugger
-  if (__LOG__) console.log("getNextLanes start")
   // Early bailout if there's no pending work left.
   const pendingLanes = root.pendingLanes;
   if (pendingLanes === NoLanes) {
@@ -386,17 +389,10 @@ function computeExpirationTime(lane: Lane, currentTime: number) {
   }
 }
 
-/**
- * 记录任务的过期时间，如果已经过期，则将该任务放到root节点的expiredLanes中
- * @param {*} root 
- * @param {*} currentTime 
- */
 export function markStarvedLanesAsExpired(
   root: FiberRoot,
   currentTime: number,
 ): void {
-  if (!__DEBUG__.length || __DEBUG__.includes("markStarvedLanesAsExpired")) debugger
-  if (__LOG__) console.log("markStarvedLanesAsExpired start")
   // TODO: This gets called every time we yield. We can optimize by storing
   // the earliest expiration time on the root. Then use that to quickly bail out
   // of this function.
@@ -452,14 +448,19 @@ export function getLanesToRetrySynchronouslyOnError(root: FiberRoot): Lanes {
   return NoLanes;
 }
 
+export function includesSyncLane(lanes: Lanes) {
+  return (lanes & SyncLane) !== NoLanes;
+}
+
 export function includesNonIdleWork(lanes: Lanes) {
   return (lanes & NonIdleLanes) !== NoLanes;
 }
 export function includesOnlyRetries(lanes: Lanes) {
   return (lanes & RetryLanes) === lanes;
 }
-export function includesOnlyTransitions(lanes: Lanes) {
-  return (lanes & TransitionLanes) === lanes;
+export function includesOnlyNonUrgentLanes(lanes: Lanes) {
+  const UrgentLanes = SyncLane | InputContinuousLane | DefaultLane;
+  return (lanes & UrgentLanes) === NoLanes;
 }
 
 export function includesBlockingLane(root: FiberRoot, lanes: Lanes) {
@@ -575,8 +576,6 @@ export function markRootUpdated(
   updateLane: Lane,
   eventTime: number,
 ) {
-  if (!__DEBUG__.length || __DEBUG__.includes("markRootUpdated")) debugger
-  if (__LOG__) console.log("markRootUpdated start")
   root.pendingLanes |= updateLane;
 
   // If there are any suspended transitions, it's possible this new update
@@ -798,6 +797,78 @@ export function movePendingFibersToMemoized(root: FiberRoot, lanes: Lanes) {
         }
       });
       updaters.clear();
+    }
+
+    lanes &= ~lane;
+  }
+}
+
+export function addTransitionToLanesMap(
+  root: FiberRoot,
+  transition: Transition,
+  lane: Lane,
+) {
+  if (enableTransitionTracing) {
+    const transitionLanesMap = root.transitionLanes;
+    const index = laneToIndex(lane);
+    let transitions = transitionLanesMap[index];
+    if (transitions === null) {
+      transitions = [];
+    }
+    transitions.push(transition);
+
+    transitionLanesMap[index] = transitions;
+  }
+}
+
+export function getTransitionsForLanes(
+  root: FiberRoot,
+  lanes: Lane | Lanes,
+): Transitions | null {
+  if (!enableTransitionTracing) {
+    return null;
+  }
+
+  const transitionsForLanes = [];
+  while (lanes > 0) {
+    const index = laneToIndex(lanes);
+    const lane = 1 << index;
+    const transitions = root.transitionLanes[index];
+    if (transitions !== null) {
+      transitions.forEach(transition => {
+        transitionsForLanes.push(transition);
+      });
+    }
+
+    lanes &= ~lane;
+  }
+
+  if (transitionsForLanes.length === 0) {
+    return null;
+  }
+
+  return transitionsForLanes;
+}
+
+export function clearTransitionsForLanes(root: FiberRoot, lanes: Lane | Lanes) {
+  if (!enableTransitionTracing) {
+    return;
+  }
+
+  while (lanes > 0) {
+    const index = laneToIndex(lanes);
+    const lane = 1 << index;
+
+    const transitions = root.transitionLanes[index];
+    if (transitions !== null) {
+      root.transitionLanes[index] = null;
+    } else {
+      if (__DEV__) {
+        console.error(
+          'React Bug: transition lanes accessed out of bounds index: %s',
+          index.toString(),
+        );
+      }
     }
 
     lanes &= ~lane;

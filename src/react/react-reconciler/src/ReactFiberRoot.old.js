@@ -7,12 +7,15 @@
  * @flow
  */
 
+import type {ReactNodeList} from 'shared/ReactTypes';
 import type {
   FiberRoot,
   SuspenseHydrationCallbacks,
   TransitionTracingCallbacks,
 } from './ReactInternalTypes';
 import type {RootTag} from './ReactRootTags';
+import type {Cache} from './ReactFiberCacheComponent.old';
+import type {Transitions} from './ReactFiberTracingMarkerComponent.old';
 
 import {noTimeout, supportsHydration} from './ReactFiberHostConfig';
 import {createHostRootFiber} from './ReactFiber.old';
@@ -35,6 +38,13 @@ import {initializeUpdateQueue} from './ReactUpdateQueue.old';
 import {LegacyRoot, ConcurrentRoot} from './ReactRootTags';
 import {createCache, retainCache} from './ReactFiberCacheComponent.old';
 
+export type RootState = {
+  element: any,
+  isDehydrated: boolean,
+  cache: Cache,
+  transitions: Transitions | null,
+};
+
 function FiberRootNode(
   containerInfo,
   tag,
@@ -51,7 +61,6 @@ function FiberRootNode(
   this.timeoutHandle = noTimeout;
   this.context = null;
   this.pendingContext = null;
-  this.isDehydrated = hydrate;
   this.callbackNode = null;
   this.callbackPriority = NoLane;
   this.eventTimes = createLaneMap(NoLanes);
@@ -85,6 +94,10 @@ function FiberRootNode(
 
   if (enableTransitionTracing) {
     this.transitionCallbacks = null;
+    const transitionLanesMap = (this.transitionLanes = []);
+    for (let i = 0; i < TotalLanes; i++) {
+      transitionLanesMap.push(null);
+    }
   }
 
   if (enableProfilerTimer && enableProfilerCommitHooks) {
@@ -116,6 +129,7 @@ export function createFiberRoot(
   containerInfo: any,
   tag: RootTag,
   hydrate: boolean,
+  initialChildren: ReactNodeList,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
   isStrictMode: boolean,
   concurrentUpdatesByDefaultOverride: null | boolean,
@@ -165,14 +179,19 @@ export function createFiberRoot(
     // retained separately.
     root.pooledCache = initialCache;
     retainCache(initialCache);
-    const initialState = {
-      element: null,
+    const initialState: RootState = {
+      element: initialChildren,
+      isDehydrated: hydrate,
       cache: initialCache,
+      transitions: null,
     };
     uninitializedFiber.memoizedState = initialState;
   } else {
-    const initialState = {
-      element: null,
+    const initialState: RootState = {
+      element: initialChildren,
+      isDehydrated: hydrate,
+      cache: (null: any), // not enabled yet
+      transitions: null,
     };
     uninitializedFiber.memoizedState = initialState;
   }
