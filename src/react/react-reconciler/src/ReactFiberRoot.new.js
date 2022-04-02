@@ -52,7 +52,9 @@ function FiberRootNode(
   identifierPrefix,
   onRecoverableError,
 ) {
+  // 标签
   this.tag = tag;
+  // 根节点 - document.getElementById("root")
   this.containerInfo = containerInfo;
   this.pendingChildren = null;
   this.current = null;
@@ -141,6 +143,7 @@ export function createFiberRoot(
   onRecoverableError: null | ((error: mixed) => void),
   transitionCallbacks: null | TransitionTracingCallbacks,
 ): FiberRoot {
+  // 创建 fiber 树的根节点
   const root: FiberRoot = (new FiberRootNode(
     containerInfo,
     tag,
@@ -158,11 +161,13 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
+  // 创建一个 fiberRoot 对应的fiber节点
   const uninitializedFiber = createHostRootFiber(
     tag,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
   );
+  // 通过 current 和 stateNode 相互指向
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
 
