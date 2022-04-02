@@ -303,8 +303,6 @@ export function jsxWithValidation(
   self,
 ) {
   if (__DEV__) {
-    if (!__DEBUG__.length || __DEBUG__.includes("jsxWithValidation")) debugger
-    if (__LOG__) console.log("jsxWithValidation start")
     const validType = isValidElementType(type);
 
     // We warn in this case but don't throw. We expect the element creation to

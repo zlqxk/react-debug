@@ -100,8 +100,8 @@ function getClientEnvironment(publicUrl) {
       env[key] = JSON.stringify(raw[key]);
       return env;
     }, {}),
-    __DEBUG__: JSON.stringify([1]),
-    __LOG__: false,
+    // __DEBUG__: JSON.stringify([1]),
+    // __LOG__: false,
   };
 
   return { raw, stringified };

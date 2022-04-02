@@ -11,7 +11,11 @@ import type {Lane, Lanes} from './ReactFiberLane.new';
 import type {Fiber, FiberRoot} from './ReactInternalTypes';
 import type {ReactNodeList, Wakeable} from 'shared/ReactTypes';
 import type {EventPriority} from './ReactEventPriorities.new';
-import type {DevToolsProfilingHooks} from 'react-devtools-shared/src/backend/types';
+// import type {DevToolsProfilingHooks} from 'react-devtools-shared/src/backend/types';
+// TODO: This import doesn't work because the DevTools depend on the DOM version of React
+// and to properly type check against DOM React we can't also type check again non-DOM
+// React which this hook might be in.
+type DevToolsProfilingHooks = any;
 
 import {
   getLabelForLane,
@@ -34,7 +38,7 @@ import {
   UserBlockingPriority as UserBlockingSchedulerPriority,
   NormalPriority as NormalSchedulerPriority,
   IdlePriority as IdleSchedulerPriority,
-  // unstable_yieldValue,
+  unstable_yieldValue,
   unstable_setDisableYieldValue,
 } from './Scheduler';
 import {setSuppressWarning} from 'shared/consoleWithStackDev';
@@ -200,13 +204,13 @@ export function onCommitUnmount(fiber: Fiber) {
 
 export function setIsStrictModeForDevtools(newIsStrictMode: boolean) {
   if (consoleManagedByDevToolsDuringStrictMode) {
-    // if (typeof unstable_yieldValue === 'function') {
-    //   // We're in a test because Scheduler.unstable_yieldValue only exists
-    //   // in SchedulerMock. To reduce the noise in strict mode tests,
-    //   // suppress warnings and disable scheduler yielding during the double render
-    //   unstable_setDisableYieldValue(newIsStrictMode);
-    //   setSuppressWarning(newIsStrictMode);
-    // }
+    if (typeof unstable_yieldValue === 'function') {
+      // We're in a test because Scheduler.unstable_yieldValue only exists
+      // in SchedulerMock. To reduce the noise in strict mode tests,
+      // suppress warnings and disable scheduler yielding during the double render
+      unstable_setDisableYieldValue(newIsStrictMode);
+      setSuppressWarning(newIsStrictMode);
+    }
 
     if (injectedHook && typeof injectedHook.setStrictMode === 'function') {
       try {

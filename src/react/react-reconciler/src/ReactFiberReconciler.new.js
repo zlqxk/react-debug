@@ -48,6 +48,7 @@ import {
   isContextProvider as isLegacyContextProvider,
 } from './ReactFiberContext.new';
 import {createFiberRoot} from './ReactFiberRoot.new';
+import {isRootDehydrated} from './ReactFiberShellHydration';
 import {
   injectInternals,
   markRenderScheduled,
@@ -57,6 +58,7 @@ import {
   requestEventTime,
   requestUpdateLane,
   scheduleUpdateOnFiber,
+  scheduleInitialHydrationOnRoot,
   flushRoot,
   batchedUpdates,
   flushSync,
@@ -244,7 +246,6 @@ function findHostInstanceWithWarning(
 export function createContainer(
   containerInfo: Container,
   tag: RootTag,
-  hydrate: boolean,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
   isStrictMode: boolean,
   concurrentUpdatesByDefaultOverride: null | boolean,
@@ -252,12 +253,13 @@ export function createContainer(
   onRecoverableError: (error: mixed) => void,
   transitionCallbacks: null | TransitionTracingCallbacks,
 ): OpaqueRoot {
-  if (!__DEBUG__.length || __DEBUG__.includes("createContainer")) debugger
-  if (__LOG__) console.log("createContainer start")
+  const hydrate = false;
+  const initialChildren = null;
   return createFiberRoot(
     containerInfo,
     tag,
     hydrate,
+    initialChildren,
     hydrationCallbacks,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
@@ -267,14 +269,63 @@ export function createContainer(
   );
 }
 
+export function createHydrationContainer(
+  initialChildren: ReactNodeList,
+  // TODO: Remove `callback` when we delete legacy mode.
+  callback: ?Function,
+  containerInfo: Container,
+  tag: RootTag,
+  hydrationCallbacks: null | SuspenseHydrationCallbacks,
+  isStrictMode: boolean,
+  concurrentUpdatesByDefaultOverride: null | boolean,
+  identifierPrefix: string,
+  onRecoverableError: (error: mixed) => void,
+  transitionCallbacks: null | TransitionTracingCallbacks,
+): OpaqueRoot {
+  const hydrate = true;
+  const root = createFiberRoot(
+    containerInfo,
+    tag,
+    hydrate,
+    initialChildren,
+    hydrationCallbacks,
+    isStrictMode,
+    concurrentUpdatesByDefaultOverride,
+    identifierPrefix,
+    onRecoverableError,
+    transitionCallbacks,
+  );
+
+  // TODO: Move this to FiberRoot constructor
+  root.context = getContextForSubtree(null);
+
+  // Schedule the initial render. In a hydration root, this is different from
+  // a regular update because the initial render must match was was rendered
+  // on the server.
+  // NOTE: This update intentionally doesn't have a payload. We're only using
+  // the update to schedule work on the root fiber (and, for legacy roots, to
+  // enqueue the callback if one is provided).
+  const current = root.current;
+  const eventTime = requestEventTime();
+  const lane = requestUpdateLane(current);
+  const update = createUpdate(eventTime, lane);
+  update.callback =
+    callback !== undefined && callback !== null ? callback : null;
+  enqueueUpdate(current, update, lane);
+  scheduleInitialHydrationOnRoot(root, lane, eventTime);
+
+  return root;
+}
+
 export function updateContainer(
   element: ReactNodeList,
   container: OpaqueRoot,
   parentComponent: ?React$Component<any, any>,
   callback: ?Function,
 ): Lane {
-  if (!__DEBUG__.length || __DEBUG__.includes("updateContainer")) debugger
-  if (__LOG__) console.log("updateContainer start")
+  if (__DEV__) {
+    onScheduleRoot(container, element);
+  }
   const current = container.current;
   const eventTime = requestEventTime();
   const lane = requestUpdateLane(current);
@@ -290,6 +341,23 @@ export function updateContainer(
     container.pendingContext = context;
   }
 
+  if (__DEV__) {
+    if (
+      ReactCurrentFiberIsRendering &&
+      ReactCurrentFiberCurrent !== null &&
+      !didWarnAboutNestedUpdates
+    ) {
+      didWarnAboutNestedUpdates = true;
+      console.error(
+        'Render methods should be a pure function of props and state; ' +
+          'triggering nested component updates from render is not allowed. ' +
+          'If necessary, trigger nested updates in componentDidUpdate.\n\n' +
+          'Check the render method of %s.',
+        getComponentNameFromFiber(ReactCurrentFiberCurrent) || 'Unknown',
+      );
+    }
+  }
+
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
@@ -297,6 +365,15 @@ export function updateContainer(
 
   callback = callback === undefined ? null : callback;
   if (callback !== null) {
+    if (__DEV__) {
+      if (typeof callback !== 'function') {
+        console.error(
+          'render(...): Expected the last optional `callback` argument to be a ' +
+            'function. Instead received: %s.',
+          callback,
+        );
+      }
+    }
     update.callback = callback;
   }
 
@@ -338,7 +415,7 @@ export function attemptSynchronousHydration(fiber: Fiber): void {
   switch (fiber.tag) {
     case HostRoot:
       const root: FiberRoot = fiber.stateNode;
-      if (root.isDehydrated) {
+      if (isRootDehydrated(root)) {
         // Flush the first scheduled "update".
         const lanes = getHighestPriorityPendingLanes(root);
         flushRoot(root, lanes);
@@ -373,20 +450,6 @@ function markRetryLaneIfNotHydrated(fiber: Fiber, retryLane: Lane) {
   if (alternate) {
     markRetryLaneImpl(alternate, retryLane);
   }
-}
-
-export function attemptDiscreteHydration(fiber: Fiber): void {
-  if (fiber.tag !== SuspenseComponent) {
-    // We ignore HostRoots here because we can't increase
-    // their priority and they should not suspend on I/O,
-    // since you have to wrap anything that might suspend in
-    // Suspense.
-    return;
-  }
-  const eventTime = requestEventTime();
-  const lane = SyncLane;
-  scheduleUpdateOnFiber(fiber, lane, eventTime);
-  markRetryLaneIfNotHydrated(fiber, lane);
 }
 
 export function attemptContinuousHydration(fiber: Fiber): void {

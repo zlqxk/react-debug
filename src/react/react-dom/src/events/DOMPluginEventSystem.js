@@ -383,14 +383,7 @@ const listeningMarker =
     .toString(36)
     .slice(2);
 
-/**
- * 向根节点注册所有支持的事件监听（合成事件）
- * @param {*} rootContainerElement 
- */
 export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
-  if (!__DEBUG__.length || __DEBUG__.includes("listenToAllSupportedEvents")) debugger
-  if (__LOG__) console.log("listenToAllSupportedEvents start")
-  // 如果未注册过，则进行注册
   if (!(rootContainerElement: any)[listeningMarker]) {
     (rootContainerElement: any)[listeningMarker] = true;
     allNativeEvents.forEach(domEventName => {
@@ -403,7 +396,6 @@ export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
         listenToNativeEvent(domEventName, true, rootContainerElement);
       }
     });
-    // 又是根据nodeType来进行判断，找到真实的document节点，对selectionchange事件特殊处理
     const ownerDocument =
       (rootContainerElement: any).nodeType === DOCUMENT_NODE
         ? rootContainerElement

@@ -112,6 +112,8 @@ import {
 import {pushInterleavedQueue} from './ReactFiberInterleavedUpdates.new';
 import {setIsStrictModeForDevtools} from './ReactFiberDevToolsHook.new';
 
+import assign from 'shared/assign';
+
 export type Update<State> = {|
   // TODO: Temporary field. Will remove this by storing a map of
   // transition -> event time on the root.
@@ -160,13 +162,7 @@ if (__DEV__) {
   };
 }
 
-/**
- * 初始化当前fiber节点的updateQueue，后续用来存放setState生成的update对象
- * @param {*} fiber 
- */
 export function initializeUpdateQueue<State>(fiber: Fiber): void {
-  if (!__DEBUG__.length || __DEBUG__.includes("initializeUpdateQueue")) debugger
-  if (__LOG__) console.log("initializeUpdateQueue start")
   const queue: UpdateQueue<State> = {
     baseState: fiber.memoizedState,
     firstBaseUpdate: null,
@@ -181,17 +177,10 @@ export function initializeUpdateQueue<State>(fiber: Fiber): void {
   fiber.updateQueue = queue;
 }
 
-/**
- * 将current上的updateQueue克隆到workInProgress
- * @param {*} current 
- * @param {*} workInProgress 
- */
 export function cloneUpdateQueue<State>(
   current: Fiber,
   workInProgress: Fiber,
 ): void {
-  if (!__DEBUG__.length || __DEBUG__.includes("cloneUpdateQueue")) debugger
-  if (__LOG__) console.log("cloneUpdateQueue start")
   // Clone the update queue from current. Unless it's already a clone.
   const queue: UpdateQueue<State> = (workInProgress.updateQueue: any);
   const currentQueue: UpdateQueue<State> = (current.updateQueue: any);
@@ -208,8 +197,6 @@ export function cloneUpdateQueue<State>(
 }
 
 export function createUpdate(eventTime: number, lane: Lane): Update<*> {
-  if (!__DEBUG__.length || __DEBUG__.includes("createUpdate")) debugger
-  if (__LOG__) console.log("createUpdate start")
   const update: Update<*> = {
     eventTime,
     lane,
@@ -228,8 +215,6 @@ export function enqueueUpdate<State>(
   update: Update<State>,
   lane: Lane,
 ) {
-  if (!__DEBUG__.length || __DEBUG__.includes("enqueueUpdate")) debugger
-  if (__LOG__) console.log("enqueueUpdate start")
   const updateQueue = fiber.updateQueue;
   if (updateQueue === null) {
     // Only occurs if the fiber has been unmounted.
@@ -261,6 +246,21 @@ export function enqueueUpdate<State>(
       pending.next = update;
     }
     sharedQueue.pending = update;
+  }
+
+  if (__DEV__) {
+    if (
+      currentlyProcessingQueue === sharedQueue &&
+      !didWarnUpdateInsideUpdate
+    ) {
+      console.error(
+        'An update (setState, replaceState, or forceUpdate) was scheduled ' +
+          'from inside an update function. Update functions should be pure, ' +
+          'with zero side-effects. Consider using componentDidUpdate or a ' +
+          'callback.',
+      );
+      didWarnUpdateInsideUpdate = true;
+    }
   }
 }
 
@@ -379,8 +379,6 @@ function getStateFromUpdate<State>(
   nextProps: any,
   instance: any,
 ): any {
-  if (!__DEBUG__.length || __DEBUG__.includes("getStateFromUpdate")) debugger
-  if (__LOG__) console.log("getStateFromUpdate start")
   switch (update.tag) {
     case ReplaceState: {
       const payload = update.payload;
@@ -446,7 +444,7 @@ function getStateFromUpdate<State>(
         return prevState;
       }
       // Merge the partial state and the previous state.
-      return Object.assign({}, prevState, partialState);
+      return assign({}, prevState, partialState);
     }
     case ForceUpdate: {
       hasForceUpdate = true;
@@ -456,21 +454,12 @@ function getStateFromUpdate<State>(
   return prevState;
 }
 
-/**
- * 
- * @param {*} workInProgress 
- * @param {*} props 
- * @param {*} instance 
- * @param {*} renderLanes 
- */
 export function processUpdateQueue<State>(
   workInProgress: Fiber,
   props: any,
   instance: any,
   renderLanes: Lanes,
 ): void {
-  if (!__DEBUG__.length || __DEBUG__.includes("processUpdateQueue")) debugger
-  if (__LOG__) console.log("processUpdateQueue start")
   // This is always non-null on a ClassComponent or HostRoot
   const queue: UpdateQueue<State> = (workInProgress.updateQueue: any);
 

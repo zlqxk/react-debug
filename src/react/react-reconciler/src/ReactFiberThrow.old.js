@@ -79,10 +79,11 @@ import {
   includesSomeLane,
   mergeLanes,
   pickArbitraryLane,
-  includesOnlyTransitions,
+  includesSyncLane,
 } from './ReactFiberLane.old';
 import {
   getIsHydrating,
+  markDidSuspendWhileHydratingDEV,
   queueHydrationError,
 } from './ReactFiberHydrationContext.old';
 
@@ -480,34 +481,30 @@ function throwException(
       attachRetryListener(suspenseBoundary, root, wakeable, rootRenderLanes);
       return;
     } else {
-      // No boundary was found. If we're inside startTransition, this is OK.
+      // No boundary was found. Unless this is a sync update, this is OK.
       // We can suspend and wait for more data to arrive.
 
-      if (includesOnlyTransitions(rootRenderLanes)) {
-        // This is a transition. Suspend. Since we're not activating a Suspense
-        // boundary, this will unwind all the way to the root without performing
-        // a second pass to render a fallback. (This is arguably how refresh
-        // transitions should work, too, since we're not going to commit the
-        // fallbacks anyway.)
+      if (!includesSyncLane(rootRenderLanes)) {
+        // This is not a sync update. Suspend. Since we're not activating a
+        // Suspense boundary, this will unwind all the way to the root without
+        // performing a second pass to render a fallback. (This is arguably how
+        // refresh transitions should work, too, since we're not going to commit
+        // the fallbacks anyway.)
+        //
+        // This case also applies to initial hydration.
         attachPingListener(root, wakeable, rootRenderLanes);
         renderDidSuspendDelayIfPossible();
         return;
       }
 
-      // We're not in a transition. We treat this case like an error because
-      // discrete renders are expected to finish synchronously to maintain
-      // consistency with external state.
-      // TODO: This will error during non-transition concurrent renders, too.
-      // But maybe it shouldn't?
-
-      // TODO: We should never call getComponentNameFromFiber in production.
-      // Log a warning or something to prevent us from accidentally bundling it.
+      // This is a sync/discrete update. We treat this case like an error
+      // because discrete renders are expected to produce a complete tree
+      // synchronously to maintain consistency with external state.
       const uncaughtSuspenseError = new Error(
-        (getComponentNameFromFiber(sourceFiber) || 'A React component') +
-          ' suspended while rendering, but no fallback UI was specified.\n' +
-          '\n' +
-          'Add a <Suspense fallback=...> component higher in the tree to ' +
-          'provide a loading indicator or placeholder to display.',
+        'A component suspended while responding to synchronous input. This ' +
+          'will cause the UI to be replaced with a loading indicator. To ' +
+          'fix, updates that suspend should be wrapped ' +
+          'with startTransition.',
       );
 
       // If we're outside a transition, fall through to the regular error path.
@@ -517,6 +514,8 @@ function throwException(
   } else {
     // This is a regular error, not a Suspense wakeable.
     if (getIsHydrating() && sourceFiber.mode & ConcurrentMode) {
+      markDidSuspendWhileHydratingDEV();
+
       const suspenseBoundary = getNearestSuspenseBoundaryToCapture(returnFiber);
       // If the error was thrown during hydration, we may be able to recover by
       // discarding the dehydrated content and switching to a client render.

@@ -11,7 +11,7 @@ import type {ReactContext} from 'shared/ReactTypes';
 import type {Fiber, FiberRoot} from './ReactInternalTypes';
 import type {Lanes} from './ReactFiberLane.old';
 import type {SuspenseState} from './ReactFiberSuspenseComponent.old';
-import type {Cache, SpawnedCachePool} from './ReactFiberCacheComponent.old';
+import type {Cache} from './ReactFiberCacheComponent.old';
 
 import {resetWorkInProgressVersions as resetMutableSourceWorkInProgressVersions} from './ReactMutableSource.old';
 import {
@@ -44,15 +44,16 @@ import {
 } from './ReactFiberContext.old';
 import {popProvider} from './ReactFiberNewContext.old';
 import {popRenderLanes} from './ReactFiberWorkLoop.old';
-import {
-  popCacheProvider,
-  popRootCachePool,
-  popCachePool,
-} from './ReactFiberCacheComponent.old';
+import {popCacheProvider} from './ReactFiberCacheComponent.old';
 import {transferActualDuration} from './ReactProfilerTimer.old';
 import {popTreeContext} from './ReactFiberTreeContext.old';
+import {popRootTransition, popTransition} from './ReactFiberTransition.old';
 
-function unwindWork(workInProgress: Fiber, renderLanes: Lanes) {
+function unwindWork(
+  current: Fiber | null,
+  workInProgress: Fiber,
+  renderLanes: Lanes,
+) {
   // Note: This intentionally doesn't check if we're hydrating because comparing
   // to the current tree provider fiber is just as fast and less error-prone.
   // Ideally we would have a special version of the work loop only
@@ -80,7 +81,7 @@ function unwindWork(workInProgress: Fiber, renderLanes: Lanes) {
     case HostRoot: {
       if (enableCache) {
         const root: FiberRoot = workInProgress.stateNode;
-        popRootCachePool(root, renderLanes);
+        popRootTransition(root, renderLanes);
 
         const cache: Cache = workInProgress.memoizedState.cache;
         popCacheProvider(workInProgress, cache);
@@ -153,9 +154,8 @@ function unwindWork(workInProgress: Fiber, renderLanes: Lanes) {
     case LegacyHiddenComponent:
       popRenderLanes(workInProgress);
       if (enableCache) {
-        const spawnedCachePool: SpawnedCachePool | null = (workInProgress.updateQueue: any);
-        if (spawnedCachePool !== null) {
-          popCachePool(workInProgress);
+        if (current !== null) {
+          popTransition(workInProgress);
         }
       }
       return null;
@@ -170,7 +170,11 @@ function unwindWork(workInProgress: Fiber, renderLanes: Lanes) {
   }
 }
 
-function unwindInterruptedWork(interruptedWork: Fiber, renderLanes: Lanes) {
+function unwindInterruptedWork(
+  current: Fiber | null,
+  interruptedWork: Fiber,
+  renderLanes: Lanes,
+) {
   // Note: This intentionally doesn't check if we're hydrating because comparing
   // to the current tree provider fiber is just as fast and less error-prone.
   // Ideally we would have a special version of the work loop only
@@ -187,7 +191,7 @@ function unwindInterruptedWork(interruptedWork: Fiber, renderLanes: Lanes) {
     case HostRoot: {
       if (enableCache) {
         const root: FiberRoot = interruptedWork.stateNode;
-        popRootCachePool(root, renderLanes);
+        popRootTransition(root, renderLanes);
 
         const cache: Cache = interruptedWork.memoizedState.cache;
         popCacheProvider(interruptedWork, cache);
@@ -218,9 +222,8 @@ function unwindInterruptedWork(interruptedWork: Fiber, renderLanes: Lanes) {
     case LegacyHiddenComponent:
       popRenderLanes(interruptedWork);
       if (enableCache) {
-        const spawnedCachePool: SpawnedCachePool | null = (interruptedWork.updateQueue: any);
-        if (spawnedCachePool !== null) {
-          popCachePool(interruptedWork);
+        if (current !== null) {
+          popTransition(interruptedWork);
         }
       }
 

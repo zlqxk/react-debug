@@ -7,12 +7,15 @@
  * @flow
  */
 
+import type {ReactNodeList} from 'shared/ReactTypes';
 import type {
   FiberRoot,
   SuspenseHydrationCallbacks,
   TransitionTracingCallbacks,
 } from './ReactInternalTypes';
 import type {RootTag} from './ReactRootTags';
+import type {Cache} from './ReactFiberCacheComponent.new';
+import type {Transitions} from './ReactFiberTracingMarkerComponent.new';
 
 import {noTimeout, supportsHydration} from './ReactFiberHostConfig';
 import {createHostRootFiber} from './ReactFiber.new';
@@ -35,6 +38,13 @@ import {initializeUpdateQueue} from './ReactUpdateQueue.new';
 import {LegacyRoot, ConcurrentRoot} from './ReactRootTags';
 import {createCache, retainCache} from './ReactFiberCacheComponent.new';
 
+export type RootState = {
+  element: any,
+  isDehydrated: boolean,
+  cache: Cache,
+  transitions: Transitions | null,
+};
+
 function FiberRootNode(
   containerInfo,
   tag,
@@ -51,7 +61,6 @@ function FiberRootNode(
   this.timeoutHandle = noTimeout;
   this.context = null;
   this.pendingContext = null;
-  this.isDehydrated = hydrate;
   this.callbackNode = null;
   this.callbackPriority = NoLane;
   this.eventTimes = createLaneMap(NoLanes);
@@ -85,6 +94,10 @@ function FiberRootNode(
 
   if (enableTransitionTracing) {
     this.transitionCallbacks = null;
+    const transitionLanesMap = (this.transitionLanes = []);
+    for (let i = 0; i < TotalLanes; i++) {
+      transitionLanesMap.push(null);
+    }
   }
 
   if (enableProfilerTimer && enableProfilerCommitHooks) {
@@ -116,6 +129,7 @@ export function createFiberRoot(
   containerInfo: any,
   tag: RootTag,
   hydrate: boolean,
+  initialChildren: ReactNodeList,
   hydrationCallbacks: null | SuspenseHydrationCallbacks,
   isStrictMode: boolean,
   concurrentUpdatesByDefaultOverride: null | boolean,
@@ -127,8 +141,6 @@ export function createFiberRoot(
   onRecoverableError: null | ((error: mixed) => void),
   transitionCallbacks: null | TransitionTracingCallbacks,
 ): FiberRoot {
-  if (!__DEBUG__.length || __DEBUG__.includes("createFiberRoot")) debugger
-  if (__LOG__) console.log("createFiberRoot start")
   const root: FiberRoot = (new FiberRootNode(
     containerInfo,
     tag,
@@ -146,13 +158,11 @@ export function createFiberRoot(
 
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.
-  // 创建root的fiber节点
   const uninitializedFiber = createHostRootFiber(
     tag,
     isStrictMode,
     concurrentUpdatesByDefaultOverride,
   );
-  // fiberRoot的current指向rootFiber，rootFiber的stateNode指向fiberRoot
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
 
@@ -169,17 +179,20 @@ export function createFiberRoot(
     // retained separately.
     root.pooledCache = initialCache;
     retainCache(initialCache);
-    const initialState = {
-      element: null,
+    const initialState: RootState = {
+      element: initialChildren,
+      isDehydrated: hydrate,
       cache: initialCache,
+      transitions: null,
     };
-    // 初始化memoizedState
     uninitializedFiber.memoizedState = initialState;
   } else {
-    const initialState = {
-      element: null,
+    const initialState: RootState = {
+      element: initialChildren,
+      isDehydrated: hydrate,
+      cache: (null: any), // not enabled yet
+      transitions: null,
     };
-    // 初始化memoizedState
     uninitializedFiber.memoizedState = initialState;
   }
 
