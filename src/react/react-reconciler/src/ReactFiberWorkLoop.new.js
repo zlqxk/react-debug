@@ -481,6 +481,7 @@ export function requestUpdateLane(fiber: Fiber): Lane {
   // The opaque type returned by the host config is internally a lane, so we can
   // use that directly.
   // TODO: Move this type conversion to the event priority module.
+  // 获取更新的优先级，初始化挂载的时候是 NoLane - 0
   const updateLane: Lane = (getCurrentUpdatePriority(): any);
   if (updateLane !== NoLane) {
     return updateLane;
@@ -492,6 +493,7 @@ export function requestUpdateLane(fiber: Fiber): Lane {
   // The opaque type returned by the host config is internally a lane, so we can
   // use that directly.
   // TODO: Move this type conversion to the event priority module.
+  // window.event 为空时返回 DefaultEventPriority - 16
   const eventLane: Lane = (getCurrentEventPriority(): any);
   return eventLane;
 }
@@ -515,6 +517,7 @@ export function scheduleUpdateOnFiber(
   lane: Lane,
   eventTime: number,
 ): FiberRoot | null {
+  // 防止无限render
   checkForNestedUpdates();
 
   const root = markUpdateLaneFromFiberToRoot(fiber, lane);
@@ -655,6 +658,13 @@ export function scheduleInitialHydrationOnRoot(
 // work without treating it as a typical update that originates from an event;
 // e.g. retrying a Suspense boundary isn't an update, but it does schedule work
 // on a fiber.
+// 这被拆分为一个单独的函数，因此我们可以标记具有待处理工作的纤程，而不会将其视为源自事件的典型更新； 例如 重试 Suspense 边界不是更新，但它确实安排了光纤上的工作。
+/**
+ * 从触发更新的fiber节点开始，一直向上mergeLanes，最终收集到rootFiber
+ * @param {*} sourceFiber 
+ * @param {*} lane 
+ * @returns 
+ */
 function markUpdateLaneFromFiberToRoot(
   sourceFiber: Fiber,
   lane: Lane,
@@ -720,11 +730,13 @@ export function isInterleavedUpdate(fiber: Fiber, lane: Lane) {
 // of the existing task is the same as the priority of the next level that the
 // root has work on. This function is called on every update, and right before
 // exiting a task.
+// 使用此功能为根计划任务。 每个根只有一个任务； 如果已经安排了任务，我们将检查以确保现有任务的优先级与 root 正在处理的下一个级别的优先级相同。 每次更新时都会调用此函数，并且就在退出任务之前。
 function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
   const existingCallbackNode = root.callbackNode;
 
   // Check if any lanes are being starved by other work. If so, mark them as
   // expired so we know to work on those next.
+  // 检查是否有任何车道被其他工作占用。 如果是这样，请将它们标记为已过期，以便我们知道接下来要处理它们。
   markStarvedLanesAsExpired(root, currentTime);
 
   // Determine the next lanes to work on, and their priority.

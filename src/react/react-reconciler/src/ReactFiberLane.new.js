@@ -405,6 +405,7 @@ export function markStarvedLanesAsExpired(
   // Iterate through the pending lanes and check if we've reached their
   // expiration time. If so, we'll assume the update is being starved and mark
   // it as expired to force it to finish.
+  // 遍历待处理的通道并检查我们是否已达到它们的到期时间。 如果是这样，我们将假设更新被饿死并将其标记为过期以强制它完成。
   let lanes = pendingLanes;
   while (lanes > 0) {
     const index = pickArbitraryLaneIndex(lanes);
@@ -415,11 +416,12 @@ export function markStarvedLanesAsExpired(
       // Found a pending lane with no expiration time. If it's not suspended, or
       // if it's pinged, assume it's CPU-bound. Compute a new expiration time
       // using the current time.
+      // 找到一个没有过期时间的待处理通道。 如果它没有被挂起，或者它被 ping 通，则假设它是 CPU 密集型的。 使用当前时间计算新的过期时间。
       if (
         (lane & suspendedLanes) === NoLanes ||
         (lane & pingedLanes) !== NoLanes
       ) {
-        // Assumes timestamps are monotonically increasing.
+        // Assumes timestamps are monotonically increasing. 假设时间戳是单调递增的。
         expirationTimes[index] = computeExpirationTime(lane, currentTime);
       }
     } else if (expirationTime <= currentTime) {
@@ -526,6 +528,11 @@ function pickArbitraryLaneIndex(lanes: Lanes) {
   return 31 - clz32(lanes);
 }
 
+/**
+ * 获取二级制最后的1的下标 0b00000000000000000000000000010000 -> 4
+ * @param {*} lane 
+ * @returns 
+ */
 function laneToIndex(lane: Lane) {
   return pickArbitraryLaneIndex(lane);
 }
@@ -538,6 +545,12 @@ export function isSubsetOfLanes(set: Lanes, subset: Lanes | Lane) {
   return (set & subset) === subset;
 }
 
+/**
+ * 取并集 000100 | 000101 = 000101
+ * @param {*} a 
+ * @param {*} b 
+ * @returns 
+ */
 export function mergeLanes(a: Lanes | Lane, b: Lanes | Lane): Lanes {
   return a | b;
 }

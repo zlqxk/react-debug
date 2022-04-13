@@ -358,6 +358,7 @@ export function updateContainer(
     }
   }
 
+  // 创建一个 update 对象
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
@@ -377,6 +378,7 @@ export function updateContainer(
     update.callback = callback;
   }
 
+  // 将创建的 update 的对象添加到 updateQueue.pending 的 shared 上，
   enqueueUpdate(current, update, lane);
   const root = scheduleUpdateOnFiber(current, lane, eventTime);
   if (root !== null) {
