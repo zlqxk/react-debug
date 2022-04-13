@@ -220,12 +220,13 @@ module.exports = function (webpackEnv) {
       publicPath: paths.publicUrlOrPath,
       // Point sourcemap entries to original disk location (format as URL on Windows)
       devtoolModuleFilenameTemplate: isEnvProduction
-        ? info =>
+        ? (info) =>
             path
               .relative(paths.appSrc, info.absoluteResourcePath)
               .replace(/\\/g, "/")
         : isEnvDevelopment &&
-          (info => path.resolve(info.absoluteResourcePath).replace(/\\/g, "/")),
+          ((info) =>
+            path.resolve(info.absoluteResourcePath).replace(/\\/g, "/")),
     },
     cache: {
       type: "filesystem",
@@ -235,7 +236,7 @@ module.exports = function (webpackEnv) {
       buildDependencies: {
         defaultWebpack: ["webpack/lib/"],
         config: [__filename],
-        tsconfig: [paths.appTsConfig, paths.appJsConfig].filter(f =>
+        tsconfig: [paths.appTsConfig, paths.appJsConfig].filter((f) =>
           fs.existsSync(f)
         ),
       },
@@ -305,19 +306,26 @@ module.exports = function (webpackEnv) {
       // `web` extension prefixes have been added for better support
       // for React Native Web.
       extensions: paths.moduleFileExtensions
-        .map(ext => `.${ext}`)
-        .filter(ext => useTypeScript || !ext.includes("ts")),
+        .map((ext) => `.${ext}`)
+        .filter((ext) => useTypeScript || !ext.includes("ts")),
       alias: {
         "react-native": "react-native-web",
         react: path.resolve(__dirname, "../src/react/react"),
         "react-dom": path.resolve(__dirname, "../src/react/react-dom"),
+        "shared/ReactSharedInternals": path.resolve(
+          __dirname,
+          "../src/react/react/src/ReactSharedInternals"
+        ),
         shared: path.resolve(__dirname, "../src/react/shared"),
         "react-reconciler": path.resolve(
           __dirname,
           "../src/react/react-reconciler"
         ),
         scheduler: path.resolve(__dirname, "../src/react/scheduler"),
-        //'react-events': path.resolve(__dirname, '../src/react/events')
+        "./ReactFiberHostConfig": path.resolve(
+          __dirname,
+          "../src/react/react-reconciler/src/forks/ReactFiberHostConfig.dom"
+        ),
       },
       plugins: [
         // Prevents users from importing files from outside of src/ (or node_modules/).
@@ -651,7 +659,7 @@ module.exports = function (webpackEnv) {
             return manifest;
           }, seed);
           const entrypointFiles = entrypoints.main.filter(
-            fileName => !fileName.endsWith(".map")
+            (fileName) => !fileName.endsWith(".map")
           );
 
           return {
