@@ -198,7 +198,8 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
 
   const suspendedLanes = root.suspendedLanes;
   const pingedLanes = root.pingedLanes;
-
+  // 在所有非空闲工作完成之前，不要处理任何空闲工作，
+  // 即使工作暂停。
   // Do not work on any idle work until all the non-idle work has finished,
   // even if the work is suspended.
   const nonIdlePendingLanes = pendingLanes & NonIdleLanes;

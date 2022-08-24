@@ -3796,7 +3796,9 @@ function beginWork(
   }
 
   if (current !== null) {
+    // 从老的fiber节点获取老的props
     const oldProps = current.memoizedProps;
+    // 从新的fiber节点获取新的props
     const newProps = workInProgress.pendingProps;
 
     if (
@@ -3809,6 +3811,7 @@ function beginWork(
       // This may be unset if the props are determined to be equal later (memo).
       didReceiveUpdate = true;
     } else {
+      // props 和 legacy 上下文都不会改变。 检查是否有挂起的更新或上下文更改。
       // Neither props nor legacy context changes. Check if there's a pending
       // update or context change.
       const hasScheduledUpdateOrContext = checkScheduledUpdateOrContext(
@@ -3859,7 +3862,7 @@ function beginWork(
       pushTreeId(workInProgress, numberOfForks, slotIndex);
     }
   }
-
+  // 在进入开始阶段之前，清除挂起的更新优先级。 TODO：假设我们即将评估组件并处理更新队列。 但是，有一个例外：SimpleMemoComponent 有时会在开始阶段的后期退出。 这表明我们应该将此分配移出公共路径并进入每个分支。
   // Before entering the begin phase, clear pending update priority.
   // TODO: This assumes that we're about to evaluate the component and process
   // the update queue. However, there's an exception: SimpleMemoComponent

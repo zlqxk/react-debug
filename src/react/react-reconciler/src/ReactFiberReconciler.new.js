@@ -326,6 +326,7 @@ export function updateContainer(
   if (__DEV__) {
     onScheduleRoot(container, element);
   }
+  // reactDOM.createRoot 创建的rootFiber
   const current = container.current;
   const eventTime = requestEventTime();
   const lane = requestUpdateLane(current);
@@ -358,7 +359,7 @@ export function updateContainer(
     }
   }
 
-  // 创建一个 update 对象
+  // 创建一个 update 对象，每次react更新就是创建一个update对象
   const update = createUpdate(eventTime, lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".

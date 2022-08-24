@@ -512,6 +512,13 @@ function requestRetryLane(fiber: Fiber) {
   return claimNextRetryLane();
 }
 
+/**
+ * 初始化动作已完成，开始调度更新
+ * @param {*} fiber 
+ * @param {*} lane 
+ * @param {*} eventTime 
+ * @returns 
+ */
 export function scheduleUpdateOnFiber(
   fiber: Fiber,
   lane: Lane,
@@ -526,6 +533,7 @@ export function scheduleUpdateOnFiber(
   }
 
   // Mark that the root has a pending update.
+  // 到这里，修改了root节点的eventTimes
   markRootUpdated(root, lane, eventTime);
 
   if (
@@ -737,8 +745,10 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
   // Check if any lanes are being starved by other work. If so, mark them as
   // expired so we know to work on those next.
   // 检查是否有任何车道被其他工作占用。 如果是这样，请将它们标记为已过期，以便我们知道接下来要处理它们。
+  // 经过这个方法处理，在root接点上修改了expirationTimer
   markStarvedLanesAsExpired(root, currentTime);
 
+  // 确定下一个要处理的通道及其优先级。
   // Determine the next lanes to work on, and their priority.
   const nextLanes = getNextLanes(
     root,
@@ -860,6 +870,7 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
   root.callbackNode = newCallbackNode;
 }
 
+// 这是每个并发任务的入口点，i.s. 通过调度程序的任何事情。
 // This is the entry point for every concurrent task, i.e. anything that
 // goes through Scheduler.
 function performConcurrentWorkOnRoot(root, didTimeout) {
@@ -867,6 +878,7 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
     resetNestedUpdateFlag();
   }
 
+  // 因为我们知道我们在一个 React 事件中，我们可以清除当前事件时间。 下一次更新将计算一个新的事件时间。
   // Since we know we're in a React event, we can clear the current
   // event time. The next update will compute a new event time.
   currentEventTime = NoTimestamp;
@@ -876,6 +888,7 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
     throw new Error('Should not already be working.');
   }
 
+  // 在决定使用哪些通道之前刷新所有未决的被动效果，以防它们安排额外的工作。
   // Flush any pending passive effects before deciding which lanes to work on,
   // in case they schedule additional work.
   const originalCallbackNode = root.callbackNode;
@@ -903,7 +916,13 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
     // Defensive coding. This is never expected to happen.
     return null;
   }
-
+  
+  // 我们在某些情况下禁用时间片：如果工作受 CPU 限制
+  // 时间太长（“过期”工作，以防止饥饿），或者我们处于
+  // 默认同步更新模式。
+  // TODO: 我们只防御性地检查 `didTimeout`，以说明调度程序
+  // 我们仍在调查的错误。 一旦调度程序中的错误被修复，
+  // 我们可以删除它，因为我们自己跟踪到期。
   // We disable time-slicing in some cases: if the work has been CPU-bound
   // for too long ("expired" work, to prevent starvation), or we're in
   // sync-updates-by-default mode.
@@ -1481,6 +1500,7 @@ function prepareFreshStack(root: FiberRoot, lanes: Lanes): Fiber {
   }
   workInProgressRoot = root;
   const rootWorkInProgress = createWorkInProgress(root.current, null);
+  // 在这里生成了workInProgress
   workInProgress = rootWorkInProgress;
   workInProgressRootRenderLanes = subtreeRenderLanes = workInProgressRootIncludedLanes = lanes;
   workInProgressRootExitStatus = RootInProgress;
@@ -1666,6 +1686,12 @@ export function renderHasNotSuspendedYet(): boolean {
   return workInProgressRootExitStatus === RootInProgress;
 }
 
+/**
+ * 以同步的形式渲染
+ * @param {*} root 
+ * @param {*} lanes 
+ * @returns 
+ */
 function renderRootSync(root: FiberRoot, lanes: Lanes) {
   const prevExecutionContext = executionContext;
   executionContext |= RenderContext;
@@ -1839,7 +1865,12 @@ function workLoopConcurrent() {
   }
 }
 
+/**
+ * 从这里算是正八经的开始执行render流程了
+ * @param {*} unitOfWork 
+ */
 function performUnitOfWork(unitOfWork: Fiber): void {
+  // 此光纤的当前刷新状态是备用状态。 理想情况下，什么都不应该依赖它，但在这里依赖它意味着我们不需要在正在进行的工作中添加额外的字段。
   // The current, flushed, state of this fiber is the alternate. Ideally
   // nothing should rely on this, but relying on it here means that we don't
   // need an additional field on the work in progress.

@@ -463,9 +463,11 @@ function throwException(
     }
 
     // Schedule the nearest Suspense to re-render the timed out view.
+    // 查找当前抛出异常的组件最近的 Suspense
     const suspenseBoundary = getNearestSuspenseBoundaryToCapture(returnFiber);
     if (suspenseBoundary !== null) {
       suspenseBoundary.flags &= ~ForceClientRender;
+      // 给查找到的Suspense做一个标记
       markSuspenseBoundaryShouldCapture(
         suspenseBoundary,
         returnFiber,

@@ -383,6 +383,10 @@ const listeningMarker =
     .toString(36)
     .slice(2);
 
+/**
+ * 全局注册事件
+ * @param {*} rootContainerElement 
+ */
 export function listenToAllSupportedEvents(rootContainerElement: EventTarget) {
   if (!(rootContainerElement: any)[listeningMarker]) {
     (rootContainerElement: any)[listeningMarker] = true;

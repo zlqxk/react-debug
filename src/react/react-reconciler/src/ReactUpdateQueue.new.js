@@ -162,6 +162,10 @@ if (__DEV__) {
   };
 }
 
+/**
+ * 初始化updateQueue
+ * @param {*} fiber 
+ */
 export function initializeUpdateQueue<State>(fiber: Fiber): void {
   const queue: UpdateQueue<State> = {
     baseState: fiber.memoizedState,
@@ -472,6 +476,7 @@ export function processUpdateQueue<State>(
   let firstBaseUpdate = queue.firstBaseUpdate;
   let lastBaseUpdate = queue.lastBaseUpdate;
 
+  // 检查是否有挂起的更新。 如果是这样，将它们转移到基本队列。
   // Check if there are pending updates. If so, transfer them to the base queue.
   let pendingQueue = queue.shared.pending;
   if (pendingQueue !== null) {
@@ -490,6 +495,7 @@ export function processUpdateQueue<State>(
     }
     lastBaseUpdate = lastPendingUpdate;
 
+    // 如果有一个当前队列，并且它与基本队列不同，那么我们也需要将更新传输到该队列。 因为基本队列是一个没有循环的单链表，我们可以追加到两个列表并利用结构共享。 TODO：将`current`作为参数传递
     // If there's a current queue, and it's different from the base queue, then
     // we need to transfer the updates to that queue, too. Because the base
     // queue is a singly-linked list with no cycles, we can append to both
